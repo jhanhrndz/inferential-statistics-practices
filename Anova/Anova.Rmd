@@ -1,0 +1,157 @@
+---
+title: "Anova"
+author: "Jhan Hernández"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-10-31"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Ejercicio de práctica.
+
+## Ingresar los datos.
+
+```{r}
+humedad = c(551,457,450,731,499,632,595,580,508,583,633,517,639,615,511,573,648,677,417,449,517,438,415,555,563,631,522,613,656,679)
+
+agregado <-c(rep(1,6),rep(2,6),rep(3,6),rep(4,6),rep(5,6))
+
+#Crear base
+datos = data.frame(agregado = agregado, humedad = humedad);datos
+```
+
+## Analisis y varianza.
+
+```{r}
+aggregate(humedad ~ agregado, data = datos, FUN = mean) #Medias
+aggregate(humedad ~ agregado, data = datos, FUN = sd)   #Desviacion estandar
+```
+
+## Crear grafico de caja y bigotes.
+
+```{r}
+require(ggplot2)
+require(plotly)
+
+p = ggplot(data = datos, aes(x=factor(agregado), y=humedad, color=factor(agregado))) + geom_boxplot() + theme_bw()
+
+ggplotly(p)
+```
+
+## Supuestos de Anova.
+
+### Normalidad.
+
+### Primer supuesto. Hipotesis.
+
+**H0**: La Variable absorción a la humedad para cada tipo de agregado
+tiene distribucion normal.
+
+**H1**: Al menos un par de absorción a la humedad no tienen distribución
+normal.
+
+#### Comentarios 
+
+Se tienen dos opciones para probar normalidad
+
+si **n\>50** se emplea el test de Kolmogorov-Smirnov con la corrección
+de Lilliefors. La función en R se llama lillie.test() y se encuentra en
+el paquete nortest.
+
+Si fuesen **n\<50** eventos por grupo se emplearía el test Shapiro-Wilk,
+shapiro.test()
+
+#### Si n\>50
+
+```{r}
+require(nortest)
+lillie.test(datos$humedad) #Normalidad global (Sin considerar los grupos).
+by(data = datos,INDICES = factor(datos$agregado),FUN = function(x){ lillie.test(x$humedad)}) #Normalidad por grupos
+
+```
+
+#### Si n\<50
+
+```{r}
+shapiro.test(datos$humedad) #Normalidad global
+by(data = datos,INDICES = factor(datos$agregado),FUN = function(x){ shapiro.test(x$humedad)}) #Normalidad por grupos
+
+```
+
+Se concluye que la variable humedad se comporta de forma normal para
+cada uno de los agregados dado que el p-valor en cada uno de ellos fue
+mayor del 5%.
+
+### Segundo supuesto. 
+
+Igualdad de varianzas (Homocedasticidad o homogenidad de varianzas)
+
+Si todos los grupos tienen distribución normal y ninguna esta sobre el
+límite se puede emplear el test de Fisher y el de Bartlett son
+recomendables"
+
+Si hay algun grupo que se encuentra en el límite para aceptar que se
+distribuye de forma normal, es mejor emplea un test basado en la mediana
+test de Levene o test de Fligner-Killeen"
+
+### Hipotesis.
+
+**H0**: Las varianzas de la variable humedad en cada uno de los
+agregados son iguales.
+
+**H1**: Al menos hay un par de varianzas para la variable humedad que
+difieren.
+
+#### **Si se cumple normalidad en todos los grupos.**
+
+```{r}
+bartlett.test(humedad ~ agregado, data = datos)
+fisher.test(x = datos$humedad, y = datos$agregado, alternative = "two.sided", conf.level = 0.95)
+```
+
+#### **Si no se cumple normalidad en todos los gru**pos.
+
+```{r}
+require(car)
+leveneTest(humedad ~ factor(datos$agregado), data = datos, center = "median")
+fligner.test(humedad ~ factor(datos$agregado), data = datos)
+```
+
+Se concluye que las varianzas poblacionales de la variable absorción a
+la humedad en cada uno de los agregados son iguales, dado que el p-valor
+fue mayor del 5%.
+
+## Prueba anova.
+
+**H0**: La absorción media a la humedad es igual en los cinco tipos de
+agregados.
+
+**H1**: Al menos hay un par absorciones de medias a la humedad que
+difieren.
+
+```{r}
+anova = aov(datos$humedad ~ factor(datos$agregado))
+anova
+summary(anova)
+plot(anova)
+```
+
+
+De entre los diferentes métodos de comparaciones múltiples y
+correcciones, se van a emplear las dos más recomendadas: Corrección de
+Holm y TukeyHSD.
+
+```{r}
+pairwise.t.test(x = datos$humedad, g = factor(datos$agregado), p.adjust.method = "holm", pool.sd = TRUE, paired = FALSE, alternative = "two.sided")
+
+TukeyHSD(anova)
+
+plot(TukeyHSD(anova))
+```

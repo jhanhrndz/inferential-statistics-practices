@@ -1,0 +1,141 @@
+---
+title: "anova2"
+author: "Jhan Hernández"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-11-05"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Ejercicio de práctica.
+
+## Ingresar los datos
+
+```{r}
+resist = c(17.5, 16.9, 15.8, 18.6, 16.4, 19.2, 17.7, 15.4, 20.3, 15.7, 17.8, 18.9, 14.6, 16.7, 20.8, 18.9, 17.5, 19.2, 16.5, 20.5, 18.3, 16.2, 17.5, 20.1)   
+
+maqui <-c(rep(1,4),rep(2,4),rep(3,4),rep(4,4),rep(5,4), rep(6,4))
+
+#Crear base
+datos = data.frame(maquina = maqui, resistencia = resist);datos
+```
+
+## Analisis y varianza
+
+```{r}
+aggregate(resistencia ~ maquina, data = datos, FUN = mean) #Medias
+aggregate(resistencia ~ maquina, data = datos, FUN = sd)   #Desviacion estandar
+```
+
+## Crear grafico de caja y bigotes
+
+```{r}
+require(ggplot2)
+require(plotly)
+
+p = ggplot(data = datos, aes(x=factor(maquina), y=resistencia, color=factor(maquina))) + geom_boxplot() + theme_bw()
+
+ggplotly(p)
+```
+
+## Supuestos de Anova
+
+### Normalidad
+
+#### Primer supuesto. Hipotesis.
+
+**H0**: La Variable absorción a la resistencia para cada tipo de maquina
+tiene distribucion normal.
+
+**H1**: Al menos un par de absorción a la resistencia no tienen
+distribución normal.
+
+##### Comentarios
+
+Se tienen dos opciones para probar normalidad
+
+si **n\>50** se emplea el test de Kolmogorov-Smirnov con la corrección
+de Lilliefors. La función en R se llama lillie.test() y se encuentra en
+el paquete nortest."
+
+Si fuesen **n\<50** eventos por grupo se emplearía el test Shapiro-Wilk,
+shapiro.test()
+
+**Si n\<50**
+
+```{r}
+shapiro.test(datos$resistencia) #Normalidad global
+by(data = datos,INDICES = factor(datos$maquina),FUN = function(x){ shapiro.test(x$resistencia)}) #Normalidad por grupos
+
+```
+
+Se concluye que la variable resistencia se comporta de forma normal para
+cada uno de los maquinas dado que el p-valor en cada uno de ellos fue
+mayor del 5%.
+
+#### Segundo supuesto
+
+Igualdad de varianzas (Homocedasticidad o homogenidad de varianzas)
+
+Si todos los grupos tienen distribución normal y ninguna esta sobre el
+límite se puede emplear el test de Fisher y el de Bartlett son
+recomendables"
+
+Si hay algun grupo que se encuentra en el límite para aceptar que se
+distribuye de forma normal, es mejor emplea un test basado en la mediana
+test de Levene o test de Fligner-Killeen"
+
+##### Hipotesis.
+
+**H0**: Las varianzas de la variable resistencia en cada uno de los
+maquinas son iguales.
+
+**H1**: Al menos hay un par de varianzas para la variable resistencia
+que difieren.
+
+**Si se cumple normalidad en todos los grupos.**
+
+```{r}
+bartlett.test(resistencia ~ maquina, data = datos)
+fisher.test(x = datos$resistencia, y = datos$maquina, alternative = "two.sided", conf.level = 0.95)
+```
+
+Se concluye que las varianzas poblacionales de la variable absorción a
+la resistencia en cada uno de los maquinas son iguales, dado que el
+p-valor fue mayor del 5%.
+
+## Prueba anova.
+
+**H0**: La absorción media a la resistencia es igual en los cinco tipos
+de maquinas.
+
+**H1**: Al menos hay un par absorciones de medias a la resistencia que
+difieren.
+
+```{r}
+anova = aov(datos$resistencia ~ factor(datos$maquina))
+anova
+summary(anova)
+plot(anova)
+```
+
+## Comparaciones multiples
+
+De entre los diferentes métodos de comparaciones múltiples y
+correcciones, se van a emplear las dos más recomendadas: Corrección de
+Holm y TukeyHSD.
+
+```{r}
+pairwise.t.test(x = datos$resistencia, g = factor(datos$maquina), p.adjust.method = "holm", pool.sd = TRUE, paired = FALSE, alternative = "two.sided")
+
+TukeyHSD(anova)
+
+plot(TukeyHSD(anova))
+```

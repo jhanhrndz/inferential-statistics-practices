@@ -1,0 +1,242 @@
+---
+title: "Actividad Anova en R"
+author: "Jhan Hernández"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-11-07"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Actividad Anova en R.
+
+Un estudio midió la tasa de sorción (ya sea absorción o adsorción) de
+tres tipos diferentes de solventes químicos orgánicos. Estos solventes
+se utilizan para limpiar partes industriales metálicas, y son desechos
+potencialmente riesgosos. Se probaron muestras independientes de
+solventes de cada tipo y se registraron sus tasas de sorción como un
+porcentaje molar. (Véase McClave, Dietrich y Sincich, 1997).
+
+![](images/clipboard-3782296860.png)
+
+**a)** Valide los supuestos para poder aplicar el análisis ANOVA.
+
+**b)** Realice el diagrama de Box-plot y comente la gráfica.
+
+**c)** ¿Existe una diferencia significativa en la tasa promedio de
+sorción de los tres solventes. ¿Qué solvente usaría?
+
+**d)** Aplique la prueba POST-HOC y comente cuales son los grupos en
+donde hay diferencias.
+
+## Ingresar los datos.
+
+```{r}
+sorcion = c(1.06, 0.79, 0.82, 0.89, 1.05, 0.95, 0.65, 1.15, 1.12, 1.58, 1.45, 0.57, 1.16, 1.12, 0.91, 0.83, 0.43, 0.29, 0.06, 0.44, 0.55, 0.61, 0.43, 0.51, 0.10, 0.53, 0.34, 0.06, 0.09, 0.17, 0.17, 0.60)
+
+solve <- c(rep("Aromaticos",9),rep("Cloroalcalinos",8),rep("Eteres", 15))
+
+#Crear base
+datos = data.frame(solvente = solve, sorcion = sorcion);datos
+```
+
+## Analisis y varianza.
+
+```{r}
+aggregate(sorcion ~ solvente, data = datos, FUN = mean) #Medias
+aggregate(sorcion ~ solvente, data = datos, FUN = sd)   #Desviacion estandar
+```
+
+# A. Validar los supuestos para poder aplicar el análisis ANOVA.
+
+## Supuestos de Anova.
+
+### Primer supuesto - Normalidad.
+
+#### Hipotesis.
+
+-   **H0:** La Variable absorción a la sorcion para cada tipo de
+    solvente tiene distribucion normal.
+
+-   **H1:** Al menos un par de absorción a la sorcion no tienen
+    distribución normal.
+
+#### Comentarios.
+
+Se tienen dos opciones para probar normalidad
+
+-   Si **n\>50** se emplea el test de Kolmogorov-Smirnov con la
+    corrección de Lilliefors. La función en R se llama lillie.test() y
+    se encuentra en el paquete nortest."
+
+-   Si fuesen **n\<50** eventos por grupo se emplearía el test
+    Shapiro-Wilk, shapiro.test()
+
+#### Si n\<50:
+
+```{r}
+shapiro.test(datos$sorcion) #Normalidad global 
+
+by(data = datos,INDICES = factor(datos$solvente),FUN = function(x){shapiro.test(x$sorcion)}) #Normalidad por grupos
+```
+
+Se concluye que la variable sorcion se comporta de forma normal para
+cada uno de los solventes dado que el p-valor en cada uno de ellos fue
+mayor del 5%.
+
+### Segundo supuesto: Igualdad de varianzas (Homocedasticidad o homogenidad de varianzas).
+
+Si todos los grupos tienen distribución normal y ninguna esta sobre el
+límite se puede emplear el test de Fisher y el de Bartlett son
+recomendables"
+
+Si hay algun grupo que se encuentra en el límite para aceptar que se
+distribuye de forma normal, es mejor emplea un test basado en la mediana
+test de Levene o test de Fligner-Killeen"
+
+#### Hipotesis.
+
+-   **H0:** Las varianzas de la variable sorcion en cada uno de los
+    solventes son iguales.
+
+-   **H1:** Al menos hay un par de varianzas para la variable sorcion
+    que difieren.
+
+#### Si se cumple normalidad en todos los grupos.
+
+```{r}
+bartlett.test(sorcion ~ solvente, data = datos) 
+
+fligner.test(sorcion ~ solvente, data = datos)
+```
+
+Se concluye que las varianzas poblacionales de la variable sorcion en
+cada uno de los solventes son iguales, dado que el p-valor fue mayor del
+5%.
+
+# B. Diagrama de Box-plot y comentario de la gráfica.
+
+## Crear grafico de caja y bigotes.
+
+```{r}
+require(ggplot2)
+require(plotly)
+
+p = ggplot(data = datos, aes(x=factor(solvente), y=sorcion, color=factor(solvente))) + geom_boxplot() + theme_bw()
+
+ggplotly(p)
+```
+
+### Comentarios de la grafica.
+
+A partir del gráfico boxplot, podemos deducir lo siguiente:
+
+-   **Rango de valores entre los grupos**: Se observan diferencias en la
+    distribución de las tasas de sorción según el tipo de solvente.
+
+-   **Medianas de las tasas de sorción**: Los Cloroalcalinos presentan
+    la mediana más elevada, seguidos por los Aromáticos y los Ésteres.
+
+-   **Variabilidad (IQR) por tipo de solvente**: Los Aromáticos y
+    Cloroalcalinos muestran una mayor dispersión en sus datos, mientras
+    que los Ésteres tienen menor variabilidad.
+
+-   **Valores atípicos potenciales**: En los grupos de Aromáticos y
+    Cloroalcalinos se podrían identificar datos fuera de los bigotes, lo
+    que indica posibles outliers.
+
+-   **Comparación visual de los grupos**: La baja superposición entre
+    las cajas sugiere diferencias importantes en las tasas de sorción
+    entre solventes, las cuales podrían confirmarse mediante un análisis
+    ANOVA.
+
+# Prueba anova.
+
+-   **H0:** La absorción media a la sorcion es igual en los tres tipos
+    de solventes.
+
+-   **H1:** Al menos hay un par absorciones de medias a la sorcion que
+    difieren.
+
+```{r}
+anova = aov(datos$sorcion ~ factor(datos$solvente))
+anova
+summary(anova)
+plot(anova)
+```
+
+# Prueba Alternativa no Parametrica del ANOVA (Kruskal-Wallis)
+
+Suponiendo que no se cumple las condiciones para realizar el anova, es
+decir, que la sorción se comporta de forma no normal y que no se dan las
+condiciones posibles para llevar acabo la prueba ANOVA, usaremos su
+Alternativa no parametrica Kruskal-Wallis.
+
+```{r}
+# Prueba no paramétrica de Kruskal-Wallis
+kruskal =  kruskal.test(sorcion ~ solvente, data = datos)
+kruskal
+```
+
+# C. ¿Existe una diferencia significativa en la tasa promedio de sorción de los tres solventes. ¿Qué solvente usaría?
+
+Con una significancia del 5%, hay evidencias que indican que debemos
+rechazar H0, es decir, al menos hay un par de medias son diferentes. Por
+lo que, podemos decir, que hay diferencias significativas entre las
+sorciones de los diferentes solventes.
+
+La elección del solvente dependerá del objetivo, ya sea maximizar o
+minimizar los resultados:
+
+-   **Para maximizar los resultados**: Se recomienda usar los
+    Cloroalcalinos, ya que presentan tanto la mediana como el rango más
+    altos en comparación con los demás solventes.
+
+-   **Para minimizar los resultados**: Los Ésteres serían la mejor
+    opción, ya que tienen el rango y la mediana más bajos entre los
+    solventes.
+
+# D. Aplique la prueba POST-HOC y comente cuales son los grupos en donde hay diferencias.
+
+## Comparaciones multiples.
+
+De entre los diferentes métodos de comparaciones múltiples y
+correcciones, se van a emplear las dos más recomendadas: Corrección de
+Holm y TukeyHSD.
+
+```{r}
+pairwise.t.test(x = datos$sorcion, g = factor(datos$solvente), p.adjust.method = "holm", pool.sd = TRUE, paired = FALSE, alternative = "two.sided")
+
+TukeyHSD(anova)
+
+plot(TukeyHSD(anova))
+```
+
+## Comparaciones multiples (POST-HOC) para Kruskal.
+
+Si el ANOVA no cumple con sus supuestos y se necesita recurrir a una
+prueba no paramétrica, también se deberá cambiar la prueba POST-HOC. En
+lugar de emplear TukeyHSD o pairwise t-tests, en un contexto no
+paramétrico se podrían utilizar pruebas como Dunn o Wilcoxon para
+realizar comparaciones múltiples entre los grupos.
+
+```{r}
+library(rstatix)
+#Usando dunn
+dunn_result <- dunn_test(sorcion ~ solvente, data = datos, p.adjust.method = "holm")
+dunn_result
+
+#Usando Pairwise 
+pairwise.wilcox.test(x = datos$sorcion, g = datos$solvente, p.adjust.method = "holm" )
+```
+
+Los grupos que presentan diferencias significativas son Eteres vs
+Aromaticos y Eteres vs Cloroalcalinos. Esto sugiere que los solventes
+Eteres tienen una tasa de sorción notablemente distinta en comparación
+con los otros dos tipos de solventes.

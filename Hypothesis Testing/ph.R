@@ -1,9 +1,11 @@
-#Taller en R prueba de hipotesis
+# Hypothesis Testing R
 
-#HERNANDEZ MATIAS JHAN CARLOS
-#PEÑA ORTEGA SAMUEL NISSI
-#RUZ TERÁN ANDRÉS FELIPE
-#VEGA ROJANO JUAN CARLOS
+# Este script implementa un conjunto de funciones para realizar pruebas de hipótesis
+# en estadística inferencial. Incluye pruebas para medias (una y dos muestras),
+# proporciones, varianzas y comparación entre grupos, utilizando distribuciones
+# Z, t de Student, chi-cuadrado y F. Permite evaluar hipótesis bajo distintos
+# escenarios (bilateral y unilateral) y facilita la toma de decisiones estadísticas.
+
 
 base1=Estudiantes #Cambiar el nombre de la base
 head(base1,4) #Encabezado de la base
@@ -15,8 +17,8 @@ class(datos$P3) #Identificar tipo de variable en una sola
 
 p3=as.numeric(datos$P3) #Convertir variable a numerica
 
-"H0 la media de la calificación P3 es 3.5
-H1: La media de la calificación P3 es diferente de 3.5"
+# H0 la media de la calificación P3 es 3.5
+# H1: La media de la calificación P3 es diferente de 3.5
 
 #Media Muestras Grandes
 mu=3.5
@@ -729,9 +731,3 @@ phrazonv = function(s1_2, s2_2, n1, n2, alfa, tipo_prueba = "bilateral") {
 
 #phrazonv (s1_2, s2_2, n1, n2, alfa, tipo_prueba = "")
 print(phrazonv(0.0003, 0.0001, 10, 20, 0.05, tipo_prueba = "cola_derecha"))
-
-
-#HERNANDEZ MATIAS JHAN CARLOS
-#PEÑA ORTEGA SAMUEL NISSI
-#RUZ TERÁN ANDRÉS FELIPE
-#VEGA ROJANO JUAN CARLOS

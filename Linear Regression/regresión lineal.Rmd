@@ -1,0 +1,88 @@
+---
+title: "regresión lineal"
+author: "Jhan Hernández"
+date: "2024-11-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Visualizar base de datos.
+```{r}
+cars
+```
+
+
+# Resumen de las variables.
+```{r}
+summary(cars)
+```
+
+
+# Grafico de dispersión.
+```{r, message=FALSE}
+require(ggplot2)
+ggplot(data = cars, aes(x = speed, y = dist)) + geom_point()
+
+```
+
+Se puede apreciar una tendencia creciente en la nube de puntos, es decir, una asociación positiva de tal forma que a mayor velocidad mayor es la distancia recorrida por el automovil.
+
+
+# Coeficiente de correñación.
+```{r}
+cor(x = cars$speed, y = cars$dist)
+```
+
+El coeficiente de correlación de pearson es de 0.8068949, lo que indica una correlación positiva y fuerte en las dos variables. 
+
+
+# Modelo de regresión lineal simple.
+```{r}
+regresion = lm(dist ~ speed, data = cars) #Dependiente ~ independientes y ~ xs
+
+summary(regresion)
+```
+
+y = mx + b
+m = prendiente
+b = intercepto
+
+Ecuación del modelo de regresion lineal
+y = 3.9424x - 17.5791
+
+
+# Validar si los coeficientes son apropiados, es decir, si son diferentes de cero.
+H0: B1 igual a cero.
+H1: B1 es diferente de cero.
+
+En este caso, debemos de rechazar la hipotesis nula, dado que, el p-valor es menor que el 5%.
+
+
+#Grafica de la recta de regresión lineal.
+```{r}
+ggplot(data = cars, aes(x = speed, y = dist)) + geom_point() + geom_abline(slope = coef(regresion)[[2]], intercept = coef(regresion)[[1]], color = 'blue')
+```
+
+
+# y pronosticados
+y pronosticados con el modelo
+
+```{r}
+speed = data.frame(speed = cars$speed)
+predict(regresion, speed) #y pronosticados #Con los x de la base 
+
+
+speed = data.frame(speed = 27)
+predict(regresion, speed)
+```
+
+
+
+
+

@@ -1,0 +1,225 @@
+---
+title: "Análisis ANOVA de vibración en cojines industriales"
+author: "Jhan Hernández"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-11-21"
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Análisis ANOVA de vibración en cojines industriales.
+
+## Ingresar los datos.
+
+```{r}
+cantidad_vibracion = c(13.1, 15.0, 14.0, 14.4, 14.0, 11.6, 13.68, 16.3, 15.7, 17.2, 14.9, 14.4, 17.2, 15.95, 13.7, 13.9, 12.4, 13.8, 14.9 , 13.3, 13.67, 15.7, 13.7, 14.4, 16.0, 13.9, 14.7, 14.73, 13.5, 13.4, 13.2, 12.7, 13.4, 12.3, 13.08)
+
+cojin <- c(rep("1",7),rep("2",7),rep("3", 7),rep("4", 7),rep("5", 7))
+
+#Crear base
+datos = data.frame(cojin = cojin, cant_vibracion = cant_vibracion);datos
+```
+
+## Analisis y varianza.
+
+```{r}
+aggregate(cant_vibracion ~ cojin, data = datos, FUN = mean) #Medias
+aggregate(cant_vibracion ~ cojin, data = datos, FUN = sd)   #Desviacion estandar
+```
+
+# A. Validar los supuestos para poder aplicar el análisis ANOVA.
+
+## Supuestos de Anova.
+
+### Primer supuesto - Normalidad.
+
+#### Hipotesis.
+
+-   **H0:** La Variable absorción a la cant_vibracion para cada tipo de
+    cojin tiene distribucion normal.
+
+-   **H1:** Al menos un par de absorción a la cant_vibracion no tienen
+    distribución normal.
+
+#### Comentarios.
+
+Se tienen dos opciones para probar normalidad
+
+-   Si n\>50 se emplea el test de Kolmogorov-Smirnov con la corrección
+    de Lilliefors. La función en R se llama lillie.test() y se encuentra
+    en el paquete nortest."
+
+-   Si fuesen n\<50 eventos por grupo se emplearía el test Shapiro-Wilk,
+    shapiro.test()
+
+#### Si n\<50:
+
+```{r}
+shapiro.test(datos$cant_vibracion) #Normalidad global 
+
+by(data = datos,INDICES = factor(datos$cojin),FUN = function(x){shapiro.test(x$cant_vibracion)}) #Normalidad por grupos}
+```
+
+Se concluye que la variable cant_vibracion se comporta de forma normal
+para cada uno de los cojins dado que el p-valor en cada uno de ellos fue
+mayor del 5%.
+
+### Segundo supuesto: Igualdad de varianzas (Homocedasticidad o homogenidad de varianzas).
+
+Si todos los grupos tienen distribución normal y ninguna esta sobre el
+límite se puede emplear el test de Fisher y el de Bartlett son
+recomendables"
+
+Si hay algun grupo que se encuentra en el límite para aceptar que se
+distribuye de forma normal, es mejor emplea un test basado en la mediana
+test de Levene o test de Fligner-Killeen"
+
+#### Hipotesis.
+
+-   **H0:** Las varianzas de la variable cant_vibracion en cada uno de
+    los cojins son iguales.
+
+-   **H1:** Al menos hay un par de varianzas para la variable
+    cant_vibracion que difieren.
+
+#### Si se cumple normalidad en todos los grupos.
+
+```{r}
+bartlett.test(cant_vibracion ~ cojin, data = datos) 
+
+#fisher.test(x = datos$cant_vibracion, y = datos$cojin, alternative = "two.sided", conf.level = 0.95)
+fligner.test(cant_vibracion ~ cojin, data = datos)
+
+```
+
+Se concluye que las varianzas poblacionales de la variable
+cant_vibracion en cada uno de los cojins son iguales, dado que el
+p-valor fue mayor del 5%.
+
+# B. Diagrama de Box-plot y comentario de la gráfica.
+
+## Crear grafico de caja y bigotes.
+
+```{r}
+require(ggplot2)
+require(plotly)
+
+p = ggplot(data = datos, aes(x=factor(cojin), y=cant_vibracion, color=factor(cojin))) + geom_boxplot() + theme_bw()
+
+ggplotly(p)
+```
+
+### Comentarios de la grafica.
+
+A partir del gráfico boxplot, podemos deducir lo siguiente:
+
+-   **Rango de valores entre los grupos**: Se observan diferencias en la
+    distribución de las tasas de sorción según el tipo de cojin.
+
+-   **Medianas de las tasas de sorción**: Los Cloroalcalinos presentan
+    la mediana más elevada, seguidos por los Aromáticos y los Ésteres.
+
+-   **Variabilidad (IQR) por tipo de cojin**: Los Aromáticos y
+    Cloroalcalinos muestran una mayor dispersión en sus datos, mientras
+    que los Ésteres tienen menor variabilidad.
+
+-   **Valores atípicos potenciales**: En los grupos de Aromáticos y
+    Cloroalcalinos se podrían identificar datos fuera de los bigotes, lo
+    que indica posibles outliers.
+
+-   **Comparación visual de los grupos**: La baja superposición entre
+    las cajas sugiere diferencias importantes en las tasas de sorción
+    entre cojins, las cuales podrían confirmarse mediante un análisis
+    ANOVA.
+
+# Prueba anova.
+
+-   **H0:** La absorción media a la cant_vibracion es igual en los cinco
+    tipos de cojins.
+
+-   **H1:** Al menos hay un par abcant_vibraciones de medias a la
+    cant_vibracion que difieren.
+
+```{r}
+anova = aov(datos$cant_vibracion ~ factor(datos$cojin))
+anova
+summary(anova)
+plot(anova)
+```
+
+# Prueba Alternativa no Parametrica del ANOVA (Kruskal-Wallis)
+
+Suponiendo que no se cumple las condiciones para realizar el anova, es
+decir, que la sorción se comporta de forma no normal y que no se dan las
+condiciones posibles para llevar acabo la prueba ANOVA, usaremos su
+Alternativa no parametrica Kruskal-Wallis.
+
+```{r}
+# Prueba no paramétrica de Kruskal-Wallis
+kruskal =  kruskal.test(cant_vibracion ~ cojin, data = datos)
+kruskal
+```
+
+# C. ¿Existe una diferencia significativa en la tasa promedio de sorción de los tres cojins. ¿Qué cojin usaría?
+
+Con una significancia del 5%, hay evidencias que indican que debemos
+rechazar H0, es decir, al menos hay un par de medias son diferentes. Por
+lo que, podemos decir, que hay diferencias significativas entre las
+cant_vibraciones de los diferentes cojins.
+
+La elección del cojin dependerá del objetivo, ya sea maximizar o
+minimizar los resultados:
+
+-   **Para maximizar los resultados**: Se recomienda usar los
+    Cloroalcalinos, ya que presentan tanto la mediana como el rango más
+    altos en comparación con los demás cojins.
+
+-   **Para minimizar los resultados**: Los Ésteres serían la mejor
+    opción, ya que tienen el rango y la mediana más bajos entre los
+    cojins.
+
+# D. Aplique la prueba POST-HOC y comente cuales son los grupos en donde hay diferencias.
+
+## Comparaciones multiples.
+
+De entre los diferentes métodos de comparaciones múltiples y
+correcciones, se van a emplear las dos más recomendadas: Corrección de
+Holm y TukeyHSD.
+
+```{r}
+pairwise.t.test(x = datos$cant_vibracion, g = factor(datos$cojin), p.adjust.method = "holm", pool.sd = TRUE, paired = FALSE, alternative = "two.sided")
+
+TukeyHSD(anova)
+
+plot(TukeyHSD(anova))
+```
+
+## Comparaciones multiples (POST-HOC) para Kruskal.
+
+Si el ANOVA no cumple con sus supuestos y se necesita recurrir a una
+prueba no paramétrica, también se deberá cambiar la prueba POST-HOC. En
+lugar de emplear TukeyHSD o pairwise t-tests, en un contexto no
+paramétrico se podrían utilizar pruebas como Dunn o Wilcoxon para
+realizar comparaciones múltiples entre los grupos.
+
+```{r}
+library(rstatix)
+#Usando dunn
+dunn_result <- dunn_test(cant_vibracion ~ cojin, data = datos, p.adjust.method = "holm")
+dunn_result
+
+#Usando Pairwise 
+pairwise.wilcox.test(x = datos$cant_vibracion, g = datos$cojin, p.adjust.method = "holm" )
+```
+
+Los grupos que presentan diferencias significativas son Eteres vs
+Aromaticos y Eteres vs Cloroalcalinos. Esto sugiere que los cojins
+Eteres tienen una tasa de sorción notablemente distinta en comparación
+con los otros dos tipos de cojins.
